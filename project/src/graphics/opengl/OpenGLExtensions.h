@@ -19,6 +19,9 @@
 #endif
 #endif
 
+#if defined(__WIIU__) || defined(HX_CAFE)
+#include <gx2gl/gx2gl_sdl.h>
+#endif
 
 #ifdef DECLARE_EXTENSION
 
@@ -40,7 +43,17 @@
 
 #elif defined(GET_EXTENSION)
 
-#if defined (LIME_SDL) && defined (NATIVE_TOOLKIT_SDL_ANGLE)
+#if defined(__WIIU__) || defined(HX_CAFE)
+#define OGL_EXT(func, ret, args)                                      \
+   {                                                                  \
+      *(void **)&lime::func = (void *)GX2GL_GetSDLProcAddress(#func); \
+   }
+
+#define EGL_EXT(func, ret, args) \
+   {                             \
+      *(void **)&lime::func = 0; \
+   }
+#elif defined (LIME_SDL) && defined (NATIVE_TOOLKIT_SDL_ANGLE)
    #define OGL_EXT(func,ret,args) \
    {\
       *(void **)&lime::func = (void *)SDL_GL_GetProcAddress(#func);\

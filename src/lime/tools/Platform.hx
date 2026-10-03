@@ -23,7 +23,6 @@ package lime.tools;
 	var XBOX1 = "xbox1";
 	var EMSCRIPTEN = "emscripten";
 	var TVOS = "tvos";
-	var SWITCH = "switch";
 	var CUSTOM = null;
 
 	@:op(A == B) @:commutative

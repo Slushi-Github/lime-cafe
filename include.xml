@@ -10,20 +10,25 @@
 	<define name="native" if="cpp || neko || nodejs || cs || java || hl" />
 	<define name="howlerjs" if="html5" />
 
-	<define name="lime-cairo" if="native" unless="cafe || HX_CAFE || wiiu"/>
+	<define name="lime-cairo" if="native" unless="wiiu || HX_CAFE || cafe" />
 	<define name="lime-canvas" if="html5" />
 	<define name="lime-cffi" if="native" />
-	<define name="lime-curl" unless="lime-console || cafe || HX_CAFE || wiiu || emscripten || flash || html5" />
+	<define name="lime-curl" unless="lime-console || wiiu || cafe || HX_CAFE || emscripten || flash || html5" />
 	<define name="lime-dom" if="html5" />
 	<define name="lime-harfbuzz" if="native" />
 	<define name="lime-howlerjs" if="html5" />
 	<define name="lime-html5" if="html5" />
 	<define name="lime-native" if="native" />
-	<define name="lime-openal" unless="lime-console || flash || html5 || wiiu || cafe || HX_CAFE" />
-	<define name="lime-opengl" if="desktop" unless="html5" />
+	<define name="lime-openalsoft" if="windows || linux || mac || android" unless="lime-mojoal || winrt || wiiu || cafe || HX_CAFE" />
+	<define name="lime-mojoal" if="static_link || winrt" unless="lime-openalsoft || wiiu || cafe || HX_CAFE" />
+	<define name="lime-openal" if="ios || tvos || emscripten || lime-openalsoft || lime-mojoal" unless="wiiu || cafe || HX_CAFE" />
+	<define name="lime-opengl" if="desktop || wiiu || cafe || HX_CAFE" unless="html5" />
 	<define name="lime-opengles" if="emscripten || mobile" />
+	<define name="lime-vulkan" if="cpp windows" unless="no-vulkan || lime-no-vulkan || winrt" />
+	<define name="lime-vulkan" if="cpp linux" unless="no-vulkan || lime-no-vulkan" />
 	<define name="lime-vorbis" if="native" />
 	<define name="lime-webgl" if="html5" />
+	<haxedef name="lime_sdl_sound" if="native" unless="wiiu || cafe || HX_CAFE"/>
 
 	<define name="no-typedarray-inline" if="cs" />
 	<haxedef name="no-compilation" />
@@ -48,13 +53,6 @@
 	<!-- <target name="switch" handler="lime-switch" />
 	<haxelib name="lime-switch" if="switch" /> -->
 
-	<!-- <section if="nx">
-		<set name="HXCPP_TOOLCHAIN_linux" value="1" />
-		<set name="nx" value="1" />
-		<set name="DEVKITPRO" value="D:/devkitPro" />
-		<set name="cpp" value="1" />
-	</section> -->
-
 	<!-- <target name="wiiu" handler="lime-wiiu" />
 	<haxelib name="lime-wiiu" if="wiiu" /> -->
 
@@ -78,6 +76,7 @@
 		<target name="windows" path="tools/platforms/WindowsPlatform.hx" />
 		<target name="wiiu" path="tools/platforms/WiiUPlatform.hx" />
 
+
 	</section>
 
 	<section unless="display">
@@ -86,6 +85,9 @@
 			<haxedef name="lime-threads" if="neko || cpp || html5" unless="emscripten" />
 			<!-- `target.threaded` isn't available, so enumerate the targets instead. -->
 			<haxedef name="lime-threads" if="cs || java || python || hl" unless="${${haxe_ver} < 4}" />
+
+			<!-- For internal use; may be removed or renamed without warning. -->
+			<haxedef name="lime-threads-deque" if="neko || cpp || cs || java || python || hl" />
 		</section>
 
 		<section if="cpp ${${haxe_ver} < 3.3}" unless="static_link">
@@ -94,7 +96,7 @@
 			<ndll name="zlib" haxelib="hxcpp" unless="emscripten || ios || tvos" />
 		</section>
 
-		<ndll name="lime" if="native" unless="lime-console static_link || cafe static_link" />
+		<ndll name="lime" if="native" unless="lime-console static_link || wiiu static_link || cafe static_link || HX_CAFE static_link" />
 
 		<dependency name="extension-api" path="dependencies/extension-api" if="android" />
 
@@ -119,10 +121,6 @@
 		<setenv name="MACOSX_DEPLOYMENT_TARGET" value="${MACOSX_DEPLOYMENT_TARGET}" if="mac" />
 
 		<architecture name="armv7" if="android" />
-
-		<section if="wiiu">
-			<dependency name="pthread" />
-		</section>
 
 		<section if="emscripten">
 

@@ -148,22 +148,24 @@ class WiiUPlatform extends PlatformTarget
             haxeArgs.push("-D"); haxeArgs.push("EPPC");
             haxeArgs.push("-D"); haxeArgs.push("cafe");
             haxeArgs.push("-D"); haxeArgs.push("HX_CAFE");
+            haxeArgs.push("-D"); haxeArgs.push("-DHXCPP_M32");
             haxeArgs.push("-D"); haxeArgs.push("static_link");
             haxeArgs.push("-D"); haxeArgs.push("HXCPP_BIG_ENDIAN");
             haxeArgs.push("-D"); haxeArgs.push("WORDS_BIGENDIAN");
             haxeArgs.push("-D"); haxeArgs.push("FLOAT_WORDS_BIGENDIAN");
             haxeArgs.push("-D"); haxeArgs.push("__BIG_ENDIAN__");
-            haxeArgs.push("-D"); haxeArgs.push("HXCPP_PTHREADS");
-            // haxeArgs.push("-D"); haxeArgs.push("HXCPP_SINGLE_THREADED_APP");
 
             flags.push("-DEPPC");
-            flags.push("-Dcafe=1");
-            flags.push("-DHX_CAFE=1");
+            flags.push("-Dcafe");
+            flags.push("-DHX_CAFE");
             flags.push("-D__WIIU__");
             flags.push("-D__WUT__");
-
-            flags.push("-DHXCPP_PTHREADS");
-            // flags.push("-DHXCPP_SINGLE_THREADED_APP");
+            flags.push("-DHXCPP_M32");
+            flags.push("-Dstatic_link");
+            flags.push("-DHXCPP_BIG_ENDIAN");
+            flags.push("-DWORDS_BIGENDIAN");
+            flags.push("-DFLOAT_WORDS_BIGENDIAN");
+            flags.push("-D__BIG_ENDIAN__");
 
             var dkp = Sys.getEnv("DEVKITPRO");
             if (dkp == null || dkp == "") {
@@ -277,7 +279,7 @@ class WiiUPlatform extends PlatformTarget
         return context;
     }
 
-    private function getDisplayHXML():HXML
+    private override function getDisplayHXML():HXML
     {
         var path = targetDirectory + "/haxe/" + buildType + ".hxml";
 
@@ -306,9 +308,9 @@ class WiiUPlatform extends PlatformTarget
             "-DHX_CAFE=1",
             "-Dstatic",
             "-Dstatic_link",
-            // "-DHXCPP_SINGLE_THREADED_APP",
             "-DBINDIR=WiiU",
             "-DEPPC",
+            "-DHXCPP_M32",
             "-DHXCPP_BIG_ENDIAN",
             "-DWORDS_BIGENDIAN",
             "-D__BIG_ENDIAN__",
@@ -324,9 +326,9 @@ class WiiUPlatform extends PlatformTarget
         CPPHelper.rebuild(project, commands);
     }
 
-      public override function run():Void
+    public override function run():Void
     {
-        var wuhbPath = Path.combine(applicationDirectory, project.app.file + ".wuhb");
+        final wuhbPath = Path.combine(applicationDirectory, project.app.file + ".wuhb");
 
         if (!FileSystem.exists(wuhbPath)) {
             Log.error("WUHB file not found at: " + wuhbPath);
@@ -337,11 +339,11 @@ class WiiUPlatform extends PlatformTarget
         if (targetFlags.exists("ip")) consoleIP = targetFlags.get("ip");
 
         if (consoleIP == null || consoleIP == "") {
-            Log.error("Console IP not set. Add <config:wiiu ip=\"192.168.x.x\" /> to your project.xml or pass --ip=... on the command line.");
+            Log.error("Console IP not set. Add <config:wiiu ip=\"192.168.x.x\" /> to your project.xml or pass --ip=192.168.x.x on the command line.");
             return;
         }
 
-        var dkp = Sys.getEnv("DEVKITPRO");
+        final dkp = Sys.getEnv("DEVKITPRO");
         if (dkp == null || dkp == "") {
             Log.error("DEVKITPRO environment variable not found.");
             return;
@@ -361,23 +363,19 @@ class WiiUPlatform extends PlatformTarget
             Log.warn("WIILOAD env var already set, using existing value: " + Sys.getEnv("WIILOAD"));
         }
 
-        var stat = FileSystem.stat(wuhbPath);
-        var fileSizeMB:Float = Math.round((stat.size / 1024.0 / 1024.0) * 100) / 100;
+        final stat = FileSystem.stat(wuhbPath);
+        final fileSizeMB:Float = Math.round((stat.size / 1024.0 / 1024.0) * 100) / 100;
         Log.info("Sending: [" + project.app.file + ".wuhb] (" + fileSizeMB + " MB) to " + consoleIP);
 
-        var exitCode = System.runCommand("", wiiloadProgram, [wuhbPath]);
+        final exitCode = System.runCommand("", wiiloadProgram, [wuhbPath]);
         if (exitCode != 0) {
             Log.error("wiiload: Transfer failed with code " + exitCode);
             return;
         }
 
-        var udpPort = 4405;
-        var udpPortStr = project.config.getString("wiiu.udp-port");
-        if (udpPortStr != null && udpPortStr != "") {
-            var parsed = Std.parseInt(udpPortStr);
-            if (parsed != null) udpPort = parsed;
-        }
+        final udpPort = 4405;
 
+        Log.info("--------------------------------------------------");
         Log.info("Listening for Wii U logs on UDP port " + udpPort + " (Ctrl+C to stop)...");
         Log.info("--------------------------------------------------");
 
@@ -385,7 +383,7 @@ class WiiUPlatform extends PlatformTarget
         try {
             var host = new Host("0.0.0.0");
             socket.bind(host, udpPort);
-            socket.setTimeout(0); // bloqueante
+            socket.setTimeout(0);
 
             var buf = Bytes.alloc(4096);
             var addr = new Address();
@@ -434,7 +432,7 @@ class WiiUPlatform extends PlatformTarget
             File.copy(gl33Source, Path.combine(limeLibDest, "libgl33_gx2_core.a"));
             Log.info("libgl33_gx2_core.a copied to: " + limeLibDest);
         } else {
-            Log.warn("libgl33_gx2_core.a not found at: " + gl33Source);
+            Log.error("libgl33_gx2_core.a not found at: [" + gl33Source + "], cannot continue.");
         }
 
         var romfsDirectory = Path.combine(applicationDirectory, "WIIU_ASSETS/romfs");

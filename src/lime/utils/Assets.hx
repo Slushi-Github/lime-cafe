@@ -16,6 +16,7 @@ import lime.utils.Log;
 import haxe.Json;
 #end
 
+@:access(lime.media.AudioBuffer)
 /**
  * <p>The Assets class provides a cross-platform interface to access
  * embedded images, fonts, sounds and other resource files.</p>
@@ -73,6 +74,7 @@ class Assets
 		#if (tools && !display)
 		if (useCache && cache.enabled)
 		{
+			Sys.println("Get asset from cache: " + id);
 			switch (type)
 			{
 				case BINARY, TEXT: // Not cached
@@ -111,12 +113,23 @@ class Assets
 			}
 		}
 
+		Sys.println("Get asset from library: " + id);
+
 		var symbol = new LibrarySymbol(id);
+
+		Sys.println(symbol);
 
 		if (symbol.library != null)
 		{
+			Sys.println("Found library: " + symbol.libraryName + " for asset: " + id);
+
+			Sys.println("symbol.library.paths: " + symbol.library.paths);
+			Sys.println("symbol.library.cachedImages: " + symbol.library.cachedImages);
+			Sys.println("symbol.library.assetsTotal: " + symbol.library.assetsTotal);
+
 			if (symbol.exists(type))
 			{
+				Sys.println("Found asset: " + id);
 				if (symbol.isLocal(type))
 				{
 					var asset = symbol.library.getAsset(symbol.symbolName, type);
@@ -156,6 +169,57 @@ class Assets
 	public static function getAudioBuffer(id:String, useCache:Bool = true):AudioBuffer
 	{
 		return cast getAsset(id, SOUND, useCache);
+	}
+
+	public static function getAudioBufferStream(id:String, useCache:Bool = true):AudioBuffer
+	{
+		#if (tools && !display && !macro)
+		var type:AssetType = SOUND;
+
+		if (useCache && cache.enabled)
+		{
+			var audio = cache.audio.get(id);
+
+			if (isValidAudio(audio))
+			{
+				return audio;
+			}
+		}
+
+		var symbol = new LibrarySymbol(id);
+
+		if (symbol.library != null)
+		{
+			if (symbol.exists(type))
+			{
+				if (symbol.isLocal(type))
+				{
+					var asset = symbol.library.getAudioBufferStream(symbol.symbolName);
+
+					if (useCache && cache.enabled)
+					{
+						cache.set(id, type, asset);
+					}
+
+					return asset;
+				}
+				else
+				{
+					Log.error(type + " asset \"" + id + "\" exists, but only asynchronously");
+				}
+			}
+			else
+			{
+				Log.error("There is no " + type + " asset with an ID of \"" + id + "\"");
+			}
+		}
+		else
+		{
+			Log.error(__libraryNotFound(symbol.libraryName));
+		}
+		#end
+
+		return null;
 	}
 
 	/**
@@ -287,9 +351,7 @@ class Assets
 
 	private static function isValidAudio(buffer:AudioBuffer):Bool
 	{
-		// TODO: Check disposed
-
-		return buffer != null;
+		return (buffer != null && !buffer.__isDisposed);
 	}
 
 	private static function isValidImage(image:Image):Bool
@@ -393,6 +455,50 @@ class Assets
 		return cast loadAsset(id, SOUND, useCache);
 	}
 
+	public static function loadAudioBufferStream(id:String, useCache:Bool = true):Future<AudioBuffer>
+	{
+		#if (tools && !display && !macro)
+		var type:AssetType = SOUND;
+
+		if (useCache && cache.enabled)
+		{
+			var audio = cache.audio.get(id);
+
+			if (isValidAudio(audio))
+			{
+				return Future.withValue(audio);
+			}
+		}
+
+		var symbol = new LibrarySymbol(id);
+
+		if (symbol.library != null)
+		{
+			if (symbol.exists(type))
+			{
+				var future = symbol.library.loadAudioBufferStream(symbol.symbolName);
+
+				if (useCache && cache.enabled)
+				{
+					future.onComplete(function(asset) cache.set(id, type, asset));
+				}
+
+				return future;
+			}
+			else
+			{
+				return cast Future.withError("There is no " + type + " asset with an ID of \"" + id + "\"");
+			}
+		}
+		else
+		{
+			return cast Future.withError(__libraryNotFound(symbol.libraryName));
+		}
+		#else
+		return null;
+		#end
+	}
+
 	public static function loadBytes(id:String):Future<Bytes>
 	{
 		return cast loadAsset(id, BINARY, false);
@@ -441,14 +547,13 @@ class Assets
 				}
 				else
 				{
-					Sys.println("Loaded library \"" + id + "\"");
 					libraries.set(id, library);
 					library.onChange.add(onChange.dispatch);
 					promise.completeWith(library.load());
 				}
 			}).onError(function(_)
 			{
-					promise.error("There is no asset library with an ID of \"" + id + "\" (on " + bundlePaths.get(id) + ")");
+					promise.error("There is no asset library with an ID of \"" + id + "\"");
 			});
 		}
 		else
@@ -488,14 +593,13 @@ class Assets
 				}
 				else
 				{
-					Sys.println("Loaded library \"" + id + "\"");
 					libraries.set(id, library);
 					library.onChange.add(onChange.dispatch);
 					promise.completeWith(library.load());
 				}
 			}).onError(function(_)
 			{
-					promise.error("There is no asset library with an ID of \"" + id + "\" (on " + path + ")");
+					promise.error("There is no asset library with an ID of \"" + id + "\"");
 			});
 		}
 		#end
@@ -596,7 +700,7 @@ class Assets
 		}
 		else
 		{
-			return "There is no asset library named \"" + name + "\" (on [" + bundlePaths.get(name) + "])";
+			return "There is no asset library named \"" + name + "\"";
 		}
 	}
 
@@ -624,6 +728,8 @@ private class LibrarySymbol
 		libraryName = id.substring(0, colonIndex);
 		symbolName = id.substring(colonIndex + 1);
 		library = Assets.getLibrary(libraryName);
+		@:privateAccess
+		trace("LibrarySymbol.new:\nid=" + id + "\nlibrary=" + library.assetsTotal + "\nlibraryName=" + libraryName + "\nsymbolName=" + symbolName);
 	}
 
 	public inline function isLocal(?type)

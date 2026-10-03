@@ -29,6 +29,8 @@ public static function fromSource(gl:WebGLRenderContext, source:String, type:Int
 	var shaderInfoLog = gl.getShaderInfoLog(shader);
 	var compileStatus = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
 
+	Sys.println("SOURCE - [" + type + "]:\n" + source);
+
 	if (shaderInfoLog != null || compileStatus == 0)
 	{
 		var message;
@@ -42,7 +44,7 @@ public static function fromSource(gl:WebGLRenderContext, source:String, type:Int
 		else
 			message = "compiling unknown shader type";
 
-		message += "\n" + shaderInfoLog;
+		message += "\n" + shaderInfoLog + "\nSOURCE:\n" + source;
 
 		if (compileStatus == 0) Log.error(message);
 		else if (shaderInfoLog != null) Log.debug(message);

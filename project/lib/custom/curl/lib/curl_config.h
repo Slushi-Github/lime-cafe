@@ -462,7 +462,9 @@
 #define HAVE_NETINET_TCP_H 1
 
 /* Define to 1 if you have the <net/if.h> header file. */
+#if !defined(HX_CAFE)
 #define HAVE_NET_IF_H 1
+#endif
 
 /* Define to 1 if you have the <nghttp2/nghttp2.h> header file. */
 /* #undef HAVE_NGHTTP2_NGHTTP2_H */

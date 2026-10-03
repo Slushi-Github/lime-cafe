@@ -1,6 +1,7 @@
 #include <graphics/PixelFormat.h>
 #include <math/Rectangle.h>
 #include <system/Clipboard.h>
+#include <system/Display.h>
 #include <system/DisplayMode.h>
 #include <system/JNI.h>
 #include <system/System.h>
@@ -41,8 +42,16 @@
 #include <locale>
 #include <codecvt>
 
+#if defined(HX_CAFE)
+#include <coreinit/debug.h>
+#include <whb/log.h>
+#endif
+
 using wstring_convert = std::wstring_convert<std::codecvt_utf8<wchar_t>>;
 
+#if defined(HX_CAFE)
+#include <hxcpp.h>
+#endif
 
 namespace lime {
 
@@ -52,10 +61,12 @@ namespace lime {
 	static int id_dpi;
 	static int id_height;
 	static int id_name;
+	static int id_orientation;
 	static int id_pixelFormat;
 	static int id_refreshRate;
 	static int id_supportedModes;
 	static int id_width;
+	static int id_safeArea;
 	static bool init = false;
 
 
@@ -293,7 +304,6 @@ namespace lime {
 
 
 	void* System::GetDisplay (bool useCFFIValue, int id) {
-
 		if (useCFFIValue) {
 
 			if (!init) {
@@ -303,10 +313,12 @@ namespace lime {
 				id_dpi = val_id ("dpi");
 				id_height = val_id ("height");
 				id_name = val_id ("name");
+				id_orientation = val_id ("orientation");
 				id_pixelFormat = val_id ("pixelFormat");
 				id_refreshRate = val_id ("refreshRate");
 				id_supportedModes = val_id ("supportedModes");
 				id_width = val_id ("width");
+				id_safeArea = val_id ("safeArea");
 				init = true;
 
 			}
@@ -320,17 +332,33 @@ namespace lime {
 			}
 
 			value display = alloc_empty_object ();
-			alloc_field (display, id_name, alloc_string (SDL_GetDisplayName (id)));
+			const char *displayName = SDL_GetDisplayName(id);
+			#if defined(HX_CAFE)
+			OSReport("[backend/sdl/SDLSystem.cpp::GetDisplay] SDL_GetDisplayName(%d) = %p\n", id, displayName);
+			WHBLogPrintf("[backend/sdl/SDLSystem.cpp::GetDisplay] SDL_GetDisplayName(%d) = %p\n", id, displayName);
+			#endif
+			alloc_field(display, id_name, alloc_string(displayName ? displayName : "Display"));
 
 			SDL_Rect bounds = { 0, 0, 0, 0 };
 			SDL_GetDisplayBounds (id, &bounds);
 			alloc_field (display, id_bounds, Rectangle (bounds.x, bounds.y, bounds.w, bounds.h).Value ());
 
+			Rectangle safeAreaInsets;
+			Display::GetSafeAreaInsets(id, &safeAreaInsets);
+			alloc_field (display, id_safeArea,
+				Rectangle (bounds.x + safeAreaInsets.x,
+					bounds.y + safeAreaInsets.y,
+					bounds.w - safeAreaInsets.x - safeAreaInsets.width,
+					bounds.h - safeAreaInsets.y - safeAreaInsets.height).Value ());
+
 			float dpi = 72.0;
-			#ifndef EMSCRIPTEN
+#ifndef EMSCRIPTEN
 			SDL_GetDisplayDPI (id, &dpi, NULL, NULL);
 			#endif
 			alloc_field (display, id_dpi, alloc_float (dpi));
+
+			SDL_DisplayOrientation orientation = SDL_GetDisplayOrientation(id);
+			alloc_field (display, id_orientation, alloc_int (orientation));
 
 			SDL_DisplayMode displayMode = { SDL_PIXELFORMAT_UNKNOWN, 0, 0, 0, 0 };
 			DisplayMode mode;
@@ -364,6 +392,11 @@ namespace lime {
 			alloc_field (display, id_currentMode, (value)mode.Value ());
 
 			int numDisplayModes = SDL_GetNumDisplayModes (id);
+			if (numDisplayModes < 0)
+				numDisplayModes = 0;
+			#if defined(HX_CAFE)
+			OSReport("[backend/sdl/SDLSystem.cpp] SDL_GetNumDisplayModes(%d) = %d\n", id, numDisplayModes);
+			#endif
 			value supportedModes = alloc_array (numDisplayModes);
 
 			for (int i = 0; i < numDisplayModes; i++) {
@@ -408,10 +441,12 @@ namespace lime {
 			const int id_dpi = hl_hash_utf8 ("dpi");
 			const int id_height = hl_hash_utf8 ("height");
 			const int id_name = hl_hash_utf8 ("name");
+			const int id_orientation = hl_hash_utf8 ("orientation");
 			const int id_pixelFormat = hl_hash_utf8 ("pixelFormat");
 			const int id_refreshRate = hl_hash_utf8 ("refreshRate");
 			const int id_supportedModes = hl_hash_utf8 ("supportedModes");
 			const int id_width = hl_hash_utf8 ("width");
+			const int id_safeArea = hl_hash_utf8 ("safeArea");
 			const int id_x = hl_hash_utf8 ("x");
 			const int id_y = hl_hash_utf8 ("y");
 
@@ -441,11 +476,24 @@ namespace lime {
 
 			hl_dyn_setp (display, id_bounds, &hlt_dynobj, _bounds);
 
+			Rectangle safeAreaInsets;
+			Display::GetSafeAreaInsets(id, &safeAreaInsets);
+			vdynamic* _safeArea = (vdynamic*)hl_alloc_dynobj ();
+			hl_dyn_seti (_safeArea, id_x, &hlt_i32, bounds.x + safeAreaInsets.x);
+			hl_dyn_seti (_safeArea, id_y, &hlt_i32, bounds.y + safeAreaInsets.y);
+			hl_dyn_seti (_safeArea, id_width, &hlt_i32, bounds.w - safeAreaInsets.x - safeAreaInsets.width);
+			hl_dyn_seti (_safeArea, id_height, &hlt_i32, bounds.h - safeAreaInsets.y - safeAreaInsets.height);
+
+			hl_dyn_setp (display, id_safeArea, &hlt_dynobj, _safeArea);
+
 			float dpi = 72.0;
 			#ifndef EMSCRIPTEN
 			SDL_GetDisplayDPI (id, &dpi, NULL, NULL);
 			#endif
 			hl_dyn_setf (display, id_dpi, dpi);
+
+			SDL_DisplayOrientation orientation = SDL_GetDisplayOrientation(id);
+			hl_dyn_seti (display, id_orientation, &hlt_i32, orientation);
 
 			SDL_DisplayMode displayMode = { SDL_PIXELFORMAT_UNKNOWN, 0, 0, 0, 0 };
 			DisplayMode mode;
@@ -674,12 +722,14 @@ namespace lime {
 
 	}
 
-	// Añadir esta condición alrededor de toda la función lime::fdopen
-#ifndef HX_WINDOWS
-#if !defined(__SWITCH__) && !defined(NX) && !defined(HX_NX)
-
 	FILE_HANDLE *fdopen(int fd, const char *mode)
 	{
+#if defined(__WIIU__) || defined(HX_CAFE)
+
+		return NULL;
+
+#elif defined(HX_WINDOWS)
+
 		System::GCEnterBlocking();
 		FILE *fp = ::fdopen(fd, mode);
 		SDL_RWops *result = SDL_RWFromFP(fp, SDL_TRUE);
@@ -690,30 +740,34 @@ namespace lime {
 			return new FILE_HANDLE(result);
 		}
 		return NULL;
-	}
 
-#endif // !defined(__SWITCH__) && !defined(NX) && !defined(HX_NX)
-#endif // HX_WINDOWS
+// 3. Caso por defecto para plataformas restantes
+#else
 
-// Y en la sección de Windows (o en una sección específica para Switch si no está definida como Windows)
-#if defined(__SWITCH__) || defined(NX) || defined(HX_NX)
-	// Definir una función vacía o que devuelva NULL para Switch
-	FILE_HANDLE *fdopen(int fd, const char *mode)
-	{
-		// fdopen no está disponible o no se puede implementar fácilmente en Switch
-		return NULL; // Indicar fallo
-	}
+		FILE *result;
+
+		System::GCEnterBlocking();
+		result = ::fdopen(fd, mode);
+		System::GCExitBlocking();
+
+		if (result)
+		{
+			return new FILE_HANDLE(result);
+		}
+		return NULL;
+
 #endif
+	}
 
 	FILE_HANDLE *fopen (const char *filename, const char *mode) {
 
-		#ifndef HX_WINDOWS
+#ifndef HX_WINDOWS
 
 		SDL_RWops *result;
 
 		System::GCEnterBlocking ();
 
-		#ifdef HX_MACOS
+#ifdef HX_MACOS
 
 		result = SDL_RWFromFile (filename, "rb");
 
@@ -742,9 +796,9 @@ namespace lime {
 			}
 
 		}
-		#else
+#else
 		result = SDL_RWFromFile (filename, mode);
-		#endif
+#endif
 
 		System::GCExitBlocking ();
 
@@ -756,7 +810,7 @@ namespace lime {
 
 		return NULL;
 
-		#else
+#else
 
 		FILE* result;
 		std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
@@ -778,7 +832,7 @@ namespace lime {
 
 		return NULL;
 
-		#endif
+#endif
 
 	}
 
@@ -788,15 +842,15 @@ namespace lime {
 		size_t nmem;
 		System::GCEnterBlocking ();
 
-		#ifndef HX_WINDOWS
+#ifndef HX_WINDOWS
 
 		nmem = SDL_RWread (stream ? (SDL_RWops*)stream->handle : NULL, ptr, size, count);
 
-		#else
+#else
 
 		nmem = ::fread (ptr, size, count, (FILE*)stream->handle);
 
-		#endif
+#endif
 
 		System::GCExitBlocking ();
 		return nmem;
@@ -809,15 +863,15 @@ namespace lime {
 		int success;
 		System::GCEnterBlocking ();
 
-		#ifndef HX_WINDOWS
+#ifndef HX_WINDOWS
 
 		success = SDL_RWseek (stream ? (SDL_RWops*)stream->handle : NULL, offset, origin);
 
-		#else
+#else
 
 		success = ::fseek ((FILE*)stream->handle, offset, origin);
 
-		#endif
+#endif
 
 		System::GCExitBlocking ();
 		return success;
@@ -830,15 +884,15 @@ namespace lime {
 		long int pos;
 		System::GCEnterBlocking ();
 
-		#ifndef HX_WINDOWS
+#ifndef HX_WINDOWS
 
 		pos = SDL_RWtell (stream ? (SDL_RWops*)stream->handle : NULL);
 
-		#else
+#else
 
 		pos = ::ftell ((FILE*)stream->handle);
 
-		#endif
+#endif
 
 		System::GCExitBlocking ();
 		return pos;
@@ -851,15 +905,15 @@ namespace lime {
 		size_t nmem;
 		System::GCEnterBlocking ();
 
-		#ifndef HX_WINDOWS
+#ifndef HX_WINDOWS
 
 		nmem = SDL_RWwrite (stream ? (SDL_RWops*)stream->handle : NULL, ptr, size, count);
 
-		#else
+#else
 
 		nmem = ::fwrite (ptr, size, count, (FILE*)stream->handle);
 
-		#endif
+#endif
 
 		System::GCExitBlocking ();
 		return nmem;
