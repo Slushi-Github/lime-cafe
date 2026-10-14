@@ -264,7 +264,7 @@ namespace lime {
 		if (flags & WINDOW_FLAG_MAXIMIZED) sdlWindowFlags |= SDL_WINDOW_MAXIMIZED;
 
 		#if defined(HX_CAFE)
-		sdlWindowFlags |= (SDL_WINDOW_WIIU_GAMEPAD_ONLY);
+		if (flags & WINDOW_FLAG_HARDWARE) sdlWindowFlags |= SDL_WINDOW_WIIU_PREVENT_SWAP;
 		#endif
 
 #ifndef EMSCRIPTEN
@@ -730,9 +730,7 @@ namespace lime {
 		if (context && !sdlRenderer) {
 
 			#if defined(HX_CAFE)
-			OSReport("[backend/sdl/SDLWindow.cpp] About to GX2GL_SwapWindow\n");
 			GX2GL_SwapWindow();
-			OSReport("[backend/sdl/SDLWindow.cpp] Finished GX2GL_SwapWindow\n");
 			#else
 			SDL_GL_SwapWindow(sdlWindow);
 			#endif
@@ -1088,13 +1086,11 @@ namespace lime {
 		SDL_GetWindowSize (sdlWindow, &width, &height);
 
 		#if defined(HX_CAFE)
-		OSReport("[backend/sdl/SDLWindow.cpp::GetHeight] width=%d, height=%d\n", width, height);
-		WHBLogPrintf("[backend/sdl/SDLWindow.cpp::GetHeight] width=%d, height=%d\n", width, height);
 		if (height <= 1)
 		{
-			OSReport("[backend/sdl/SDLWindow.cpp::GetHeight] returning 1080\n");
-			WHBLogPrintf("[backend/sdl/SDLWindow.cpp::GetHeight] returning 1080\n");
-			return 1080;
+			SDL_DisplayMode mode;
+			if (SDL_GetCurrentDisplayMode(0, &mode) == 0 && mode.h > 1) return mode.h;
+			return 720;
 		}
 		#endif
 
@@ -1185,13 +1181,11 @@ namespace lime {
 		SDL_GetWindowSize (sdlWindow, &width, &height);
 
 		#if defined(HX_CAFE)
-		OSReport("[backend/sdl/SDLWindow.cpp::GetWidth] width=%d, height=%d\n", width, height);
-		WHBLogPrintf("[backend/sdl/SDLWindow.cpp::GetWidth] width=%d, height=%d\n", width, height);
 		if (width <= 1)
 		{
-			OSReport("[backend/sdl/SDLWindow.cpp::GetWidth] returning 1920\n");
-			WHBLogPrintf("[backend/sdl/SDLWindow.cpp::GetWidth] returning 1920\n");
-			return 1920;
+			SDL_DisplayMode mode;
+			if (SDL_GetCurrentDisplayMode(0, &mode) == 0 && mode.w > 1) return mode.w;
+			return 1280;
 		}
 		#endif
 

@@ -172,7 +172,8 @@
 			<flag value="-DHXCPP_STACK_POINTER"/>
 
 
-			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/wiiugx2gl/include" />
+			<compilerflag value="-I${GX2GL_INCLUDE_DIR}" if="GX2GL_INCLUDE_DIR" />
+			<compilerflag value="-I../external/gx2gl/include" unless="GX2GL_INCLUDE_DIR" />
 			<compilerflag value="-DLIME_OPENGL" />
 		</section>
 
