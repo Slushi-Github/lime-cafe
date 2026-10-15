@@ -324,6 +324,25 @@ class WiiUPlatform extends PlatformTarget
         ]);
 
         CPPHelper.rebuild(project, commands);
+
+        var limePath = getLimePath();
+        var gx2glPath = Path.combine(limePath, "external/gx2gl");
+        if (FileSystem.exists(Path.combine(gx2glPath, "CMakeLists.txt"))) {
+            if (dkp == null || dkp == "")
+                Log.error("DEVKITPRO is required to build gx2gl for Wii U.");
+
+            var gx2glBuild = Path.combine(limePath, "project/obj/gx2gl");
+            var toolchain = Path.combine(dkp, "cmake/WiiU.cmake");
+            Log.info("Compiling the gx2gl Wii U submodule.");
+            if (System.runCommand("", "cmake", ["-S", gx2glPath, "-B", gx2glBuild,
+                "-G", "Ninja", "-DCMAKE_TOOLCHAIN_FILE=" + toolchain]) != 0)
+                Log.error("Failed to configure the gx2gl Wii U submodule.");
+            if (System.runCommand("", "cmake", ["--build", gx2glBuild, "--parallel", "2"]) != 0)
+                Log.error("Failed to build the gx2gl Wii U submodule.");
+        } 
+        else {
+            Log.error("gx2gl submodule missing. Run 'git submodule update --init --recursive' in " + limePath);
+        }
     }
 
     public override function run():Void
@@ -424,37 +443,23 @@ class WiiUPlatform extends PlatformTarget
         if (FileSystem.exists(limeSource)) {
             File.copy(limeSource, Path.combine(limeLibDest, "liblime.a"));
         } else {
-            Log.warn("liblime.a not found at: " + limeSource);
+            Log.error("liblime.a not found at: " + limeSource + "\nPlease build it for the Wii U first using 'lime rebuild wiiu'");
         }
 
         var gl33Source = project.config.getString("wiiu.gx2gl-library");
         if (gl33Source == null || gl33Source == "") gl33Source = Sys.getEnv("GX2GL_LIBRARY");
         if (gl33Source == null || gl33Source == "") {
-            var gx2glPath = Path.combine(limePath, "external/gx2gl");
-            if (!FileSystem.exists(Path.combine(gx2glPath, "CMakeLists.txt")))
-                Log.error("gx2gl submodule missing. Run git submodule update --init --recursive in " + limePath);
-
-            var devkitPro = Sys.getEnv("DEVKITPRO");
-            if (devkitPro == null || devkitPro == "")
-                Log.error("DEVKITPRO is required to build gx2gl for Wii U.");
-
-            var gx2glBuild = Path.combine(limePath, "project/obj/gx2gl");
-            var toolchain = Path.combine(devkitPro, "cmake/WiiU.cmake");
-            if (System.runCommand("", "cmake", ["-S", gx2glPath, "-B", gx2glBuild,
-                "-G", "Ninja", "-DCMAKE_TOOLCHAIN_FILE=" + toolchain]) != 0)
-                Log.error("Failed to configure the gx2gl Wii U submodule.");
-            if (System.runCommand("", "cmake", ["--build", gx2glBuild, "--parallel", "2"]) != 0)
-                Log.error("Failed to build the gx2gl Wii U submodule.");
-
-            gl33Source = Path.combine(gx2glBuild, "libgl33_gx2_core.a");
+            gl33Source = Path.combine(limePath, "project/obj/gx2gl/libgl33_gx2_core.a");
         }
-        if (!FileSystem.exists(gl33Source))
-            Log.error("libgl33_gx2_core.a not found at: " + gl33Source);
 
-        var dest = Path.combine(limeLibDest, "libgl33_gx2_core.a");
-        if (FileSystem.absolutePath(gl33Source) != FileSystem.absolutePath(dest))
-            File.copy(gl33Source, dest);
-        Log.info("libgl33_gx2_core.a selected from: " + gl33Source);
+        if (FileSystem.exists(gl33Source)) {
+            var dest = Path.combine(limeLibDest, "libgl33_gx2_core.a");
+            if (FileSystem.absolutePath(gl33Source) != FileSystem.absolutePath(dest))
+                File.copy(gl33Source, dest);
+            Log.info("libgl33_gx2_core.a selected from: " + gl33Source);
+        } else {
+            Log.error("libgl33_gx2_core.a not found at: " + gl33Source + "\nPlease build it for the Wii U first using 'lime rebuild wiiu'");
+        }
 
         var romfsDirectory = Path.combine(applicationDirectory, "WIIU_ASSETS/romfs");
         System.mkdir(romfsDirectory);
