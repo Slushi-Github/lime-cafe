@@ -29,8 +29,6 @@ public static function fromSource(gl:WebGLRenderContext, source:String, type:Int
 	var shaderInfoLog = gl.getShaderInfoLog(shader);
 	var compileStatus = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
 
-	Sys.println("SOURCE - [" + type + "]:\n" + source);
-
 	if (shaderInfoLog != null || compileStatus == 0)
 	{
 		var message;

@@ -174,6 +174,9 @@ class Application extends Module
 		__preloader = new Preloader();
 		__preloader.onProgress.add(onPreloadProgress);
 		__preloader.onComplete.add(onPreloadComplete);
+
+		final rootsLibrary = new lime.utils.WiiURootsLibrary(["fs:/vol/content/"]);
+		lime.utils.Assets.registerLibrary("default", rootsLibrary);
 	}
 
 	/**

@@ -84,6 +84,8 @@ class WiiULinker {
 
         makeFile = makeFile.replace("[LIME_APPLICATION_DIR]", args.romfsPath);
 
+        makeFile = makeFile.replace("[LIME_LIB_DIR]", Path.combine(exportPath, "obj/LIME_LIB/lib"));
+
         var additionalLibsStr = "";
         if (args.additionalLibs != null && args.additionalLibs.length > 0) {
             var validLibs = args.additionalLibs.filter(lib -> lib != null && lib != "");

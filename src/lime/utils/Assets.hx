@@ -74,7 +74,6 @@ class Assets
 		#if (tools && !display)
 		if (useCache && cache.enabled)
 		{
-			Sys.println("Get asset from cache: " + id);
 			switch (type)
 			{
 				case BINARY, TEXT: // Not cached
@@ -113,23 +112,12 @@ class Assets
 			}
 		}
 
-		Sys.println("Get asset from library: " + id);
-
 		var symbol = new LibrarySymbol(id);
-
-		Sys.println(symbol);
 
 		if (symbol.library != null)
 		{
-			Sys.println("Found library: " + symbol.libraryName + " for asset: " + id);
-
-			Sys.println("symbol.library.paths: " + symbol.library.paths);
-			Sys.println("symbol.library.cachedImages: " + symbol.library.cachedImages);
-			Sys.println("symbol.library.assetsTotal: " + symbol.library.assetsTotal);
-
 			if (symbol.exists(type))
 			{
-				Sys.println("Found asset: " + id);
 				if (symbol.isLocal(type))
 				{
 					var asset = symbol.library.getAsset(symbol.symbolName, type);
@@ -728,8 +716,6 @@ private class LibrarySymbol
 		libraryName = id.substring(0, colonIndex);
 		symbolName = id.substring(colonIndex + 1);
 		library = Assets.getLibrary(libraryName);
-		@:privateAccess
-		trace("LibrarySymbol.new:\nid=" + id + "\nlibrary=" + library.assetsTotal + "\nlibraryName=" + libraryName + "\nsymbolName=" + symbolName);
 	}
 
 	public inline function isLocal(?type)

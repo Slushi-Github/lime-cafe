@@ -358,6 +358,15 @@ class WiiUPlatform extends PlatformTarget
         if (targetFlags.exists("ip")) consoleIP = targetFlags.get("ip");
 
         if (consoleIP == null || consoleIP == "") {
+            if (Sys.getEnv("WIILOAD") == null) {
+                Sys.putEnv("WIILOAD", "tcp:" + consoleIP);
+            } else {
+                consoleIP = Sys.getEnv("WIILOAD");
+                Log.warn("WIILOAD env var already set, using existing value: " + Sys.getEnv("WIILOAD"));
+            }
+        }
+
+        if (consoleIP == null || consoleIP == "") {
             Log.error("Console IP not set. Add <config:wiiu ip=\"192.168.x.x\" /> to your project.xml or pass --ip=192.168.x.x on the command line.");
             return;
         }
@@ -374,12 +383,6 @@ class WiiUPlatform extends PlatformTarget
         if (!FileSystem.exists(wiiloadProgram)) {
             Log.error("wiiload not found at: " + wiiloadProgram + " (install wii-tools via devkitPro pacman)");
             return;
-        }
-
-        if (Sys.getEnv("WIILOAD") == null) {
-            Sys.putEnv("WIILOAD", "tcp:" + consoleIP);
-        } else {
-            Log.warn("WIILOAD env var already set, using existing value: " + Sys.getEnv("WIILOAD"));
         }
 
         final stat = FileSystem.stat(wuhbPath);

@@ -167,11 +167,6 @@
 			<file name="src/text/Font.cpp" />
 			<file name="src/text/harfbuzz/HarfbuzzBindings.cpp" />
 
-			<flag value="-DHXCPP_STACK_TRACE"/>
-			<flag value="-DHXCPP_STACK_LINE"/>
-			<flag value="-DHXCPP_STACK_POINTER"/>
-
-
 			<compilerflag value="-I${GX2GL_INCLUDE_DIR}" if="GX2GL_INCLUDE_DIR" />
 			<compilerflag value="-I../external/gx2gl/include" unless="GX2GL_INCLUDE_DIR" />
 			<compilerflag value="-DLIME_OPENGL" />
