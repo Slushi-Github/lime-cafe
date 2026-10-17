@@ -10,6 +10,51 @@
 #include <whb/crash.h>
 #include <unistd.h>
 #include <coreinit/debug.h>
+#include <coreinit/memheap.h>
+#include <coreinit/memexpheap.h>
+#include <coreinit/memdefaultheap.h>
+#include <coreinit/thread.h>
+#include <coreinit/time.h>
+
+static uint32_t probeLargestFree()
+{
+	uint32_t lo = 0, hi = 256u * 1024 * 1024; // 256 MB
+	while (hi - lo > 64 * 1024)
+	{
+		uint32_t mid = lo + (hi - lo) / 2;
+		void *p = MEMAllocFromDefaultHeapEx(mid, 4);
+		if (p)
+		{
+			MEMFreeToDefaultHeap(p);
+			lo = mid;
+		}
+		else
+		{
+			hi = mid;
+		}
+	}
+	return lo;
+}
+
+static void logMem(const char *tag)
+{
+	uint32_t largest = probeLargestFree();
+	OSReport("[MEM] %s: largest_alloc=%u KB\n", tag, largest / 1024);
+	WHBLogPrintf("[MEM] %s: largest_alloc=%u KB", tag, largest / 1024);
+}
+
+static OSThread sMemThread;
+alignas(16) static uint8_t sMemThreadStack[16 * 1024];
+
+static int memThreadEntry(int argc, const char **argv)
+{
+	for (;;)
+	{
+		logMem("tick");
+		OSSleepTicks(OSMillisecondsToTicks(1000));
+	}
+	return 0;
+}
 #endif
 
 #if defined(HX_WINDOWS) && !defined(HXCPP_DEBUGGER)
@@ -42,6 +87,8 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
 	OSReport("[Main.cpp] Running on WiiU! Initializing rest of HXCPP and Lime...\n");
 	WHBLogPrintf("[Main.cpp] Running on WiiU! Initializing rest of HXCPP and Lime...\n");
 
+	logMem("after WHBGfxInit");
+
 		int guardCounter = 0;
 	while (!WHBProcIsRunning())
 	{
@@ -57,6 +104,13 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
 	OSReport("[Main.cpp] ProcUI foreground acquired.\n");
 	WHBLogPrintf("[Main.cpp] ProcUI foreground acquired.\n");
 
+	logMem("before hxRunLibrary");
+
+	OSCreateThread(&sMemThread, memThreadEntry, 0, NULL,
+		sMemThreadStack + sizeof(sMemThreadStack), sizeof(sMemThreadStack),
+		16, OS_THREAD_ATTRIB_AFFINITY_ANY);
+	OSSetThreadName(&sMemThread, "MemLogger");
+	OSResumeThread(&sMemThread);
 #endif
 
 	hxcpp_set_top_of_stack();
@@ -78,8 +132,8 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
 
 		printf("%s", error_message);
 		#if defined(__WIIU__)
-		OSReport(error_message);
-		WHBLogPrintf(error_message);
+		OSReport("%s", error_message);
+		WHBLogPrintf("%s", error_message);
 		OSFatal(error_message);
 
 		WHBUnmountSdCard();
