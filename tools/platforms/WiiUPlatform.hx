@@ -358,7 +358,7 @@ class WiiUPlatform extends PlatformTarget
         if (targetFlags.exists("ip")) consoleIP = targetFlags.get("ip");
 
         if (consoleIP == null || consoleIP == "") {
-            if (Sys.getEnv("WIILOAD") == null) {
+            if (Sys.getEnv("WIILOAD") == null || Sys.getEnv("WIILOAD") == "") {
                 Sys.putEnv("WIILOAD", "tcp:" + consoleIP);
             } else {
                 consoleIP = Sys.getEnv("WIILOAD");
@@ -367,7 +367,7 @@ class WiiUPlatform extends PlatformTarget
         }
 
         if (consoleIP == null || consoleIP == "") {
-            Log.error("Console IP not set. Add <config:wiiu ip=\"192.168.x.x\" /> to your project.xml or pass --ip=192.168.x.x on the command line.");
+            Log.error("Console IP not set. Add <config:wiiu ip=\"192.168.x.x\" /> to your project.xml or pass --ip=192.168.x.x on the command line, or set the WIILOAD env var.");
             return;
         }
 
