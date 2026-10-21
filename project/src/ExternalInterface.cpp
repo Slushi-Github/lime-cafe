@@ -69,11 +69,6 @@
 #include <media/SDLSound.h>
 #endif
 
-#if defined(HX_CAFE)
-#include <coreinit/debug.h>
-#include <whb/log.h>
-#endif
-
 DEFINE_KIND (k_finalizer);
 
 
@@ -4098,17 +4093,7 @@ namespace lime {
 
 	value lime_system_get_display (int id) {
 
-		#if defined(HX_CAFE)
-		OSReport ("Something is calling lime_system_get_display\n");
-		WHBLogPrintf ("Something is calling lime_system_get_display\n");
-		#endif
-
 		value result = (value)System::GetDisplay(true, id);
-
-		#if defined(HX_CAFE)
-		OSReport ("lime_system_get_display returning %p\n", result);
-		WHBLogPrintf ("lime_system_get_display returning %p\n", result);
-		#endif
 
 		return result;
 	}

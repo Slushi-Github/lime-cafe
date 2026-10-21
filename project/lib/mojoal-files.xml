@@ -2,16 +2,34 @@
 
 	<files id="native-toolkit-mojoal">
 
-		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/" />
-		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/default/" unless="windows || mac || linux || rpi" />
-		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/linux/" if="linux" unless="rpi" />
-		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/windows/" if="windows" />
-		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/mac/" if="mac" />
-		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/rpi/" if="rpi" />
+		<!-- Wii U: usar el SDL2 del portlib de devkitPro -->
+		<section if="wiiu || cafe || HX_CAFE">
+
+			<compilerflag value="-I${DEVKITPRO}/portlibs/wiiu/include" />
+			<compilerflag value="-I${DEVKITPRO}/portlibs/wiiu/include/SDL2" />
+
+		</section>
+
+		<!-- Resto de plataformas: SDL interno de Lime -->
+		<section unless="wiiu || cafe || HX_CAFE">
+
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/" />
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/default/" unless="windows || mac || linux || rpi" />
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/linux/" if="linux" unless="rpi" />
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/windows/" if="windows" />
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/mac/" if="mac" />
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/rpi/" if="rpi" />
+
+		</section>
 
 		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/mojoal/" />
 		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/mojoal/AL/" />
 		<compilerflag value="-DAL_LIBTYPE_STATIC" if="native_toolkit_mojoal_static" />
+
+		<compilerflag value="-mno-sdata" if="wiiu || cafe || HX_CAFE" />
+		<compilerflag value="-fno-PIC" if="wiiu || cafe || HX_CAFE" />
+		<compilerflag value="-fno-PIE" if="wiiu || cafe || HX_CAFE" />
+		<compilerflag value="-DHAVE_LIBC" if="wiiu || cafe || HX_CAFE" />
 
 		<file name="${NATIVE_TOOLKIT_PATH}/mojoal/mojoal.c" />
 

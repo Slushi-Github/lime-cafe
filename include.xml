@@ -20,8 +20,8 @@
 	<define name="lime-html5" if="html5" />
 	<define name="lime-native" if="native" />
 	<define name="lime-openalsoft" if="windows || linux || mac || android" unless="lime-mojoal || winrt || wiiu || cafe || HX_CAFE" />
-	<define name="lime-mojoal" if="static_link || winrt" unless="lime-openalsoft || wiiu || cafe || HX_CAFE" />
-	<define name="lime-openal" if="ios || tvos || emscripten || lime-openalsoft || lime-mojoal" unless="wiiu || cafe || HX_CAFE" />
+	<define name="lime-mojoal" if="static_link || winrt || wiiu || cafe || HX_CAFE" unless="lime-openalsoft" />
+	<define name="lime-openal" if="ios || tvos || emscripten || lime-openalsoft || lime-mojoal" />
 	<define name="lime-opengl" if="desktop || wiiu || cafe || HX_CAFE" unless="html5" />
 	<define name="lime-opengles" if="emscripten || mobile" />
 	<define name="lime-vulkan" if="cpp windows" unless="no-vulkan || lime-no-vulkan || winrt" />
