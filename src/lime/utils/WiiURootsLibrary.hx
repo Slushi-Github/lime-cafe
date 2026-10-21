@@ -21,8 +21,6 @@ using StringTools;
  * A utility that overrides the OpenFL/Lime Asset Library so that it uses `sys.io.File` and `sys.FileSystem` instead
  * 
  * This is because the orignal asset library for some reason doesn't work on the Wii U
- * 
- * It also searches for the file(s) in the specified folders
  */
 class WiiURootsLibrary extends AssetLibrary
 {
@@ -40,11 +38,20 @@ class WiiURootsLibrary extends AssetLibrary
             if (manifest != null)
             {
                 __fromManifest(manifest);
+                
+                for (key in paths.keys())
+                {
+                    var p = paths.get(key);
+                    if (p != null && p.startsWith("fs:/vol/") && !p.startsWith("fs:/vol/content/"))
+                    {
+                        var corrected = p.replace("fs:/vol/", "fs:/vol/content/");
+                        paths.set(key, corrected);
+                    }
+                }
             }
         }
 
         this.loaded = true;
-
         trace("Custom Wii U asset library loaded!");
     }
 
@@ -80,19 +87,61 @@ class WiiURootsLibrary extends AssetLibrary
 
     override public function exists(id:String, type:String):Bool
     {
-        return getPath(id) != null;
+        if (getPath(id) != null)
+        {
+            if (type == null || cast(type, AssetType) == BINARY) return true;
+
+            if (types.exists(id))
+            {
+                var requestedType:AssetType = cast type;
+                var actualType:AssetType = types.get(id);
+
+                if (actualType == requestedType) return true;
+                if ((requestedType == SOUND || requestedType == MUSIC) && 
+                    (actualType == SOUND || actualType == MUSIC))
+                {
+                    return true;
+                }
+                // trace("Asset type mismatch: " + id);
+                return false;
+            }
+
+            return true;
+        }
+
+        // trace("Asset not found: " + id);
+        return false;
     }
 
     override public function getPath(uPath:String):String
     {
-        for (root in roots)
+        if (paths.exists(uPath))
         {
-            final path:String = Path.join([root, uPath]);
-
-            if (FileSystem.exists(path))
-                return path;
+            trace("Mapping " + uPath + " to " + paths.get(uPath));
+            uPath = paths.get(uPath);
         }
 
+        if (uPath.startsWith("fs:/"))
+        {
+            if (FileSystem.exists(uPath))
+            {
+                // trace("Found direct path: " + uPath);
+                return uPath;
+            }
+        }
+
+        for (root in roots)
+        {
+            // trace("Trying root: " + root);
+            final path:String = Path.join([root, uPath]);
+
+            if (FileSystem.exists(path)) {
+                // trace("Found path: " + path);
+                return path;
+            }
+        }
+
+        // trace("Asset not found: " + uPath + " in roots: " + roots + ", trying to resolve it...");
         return resolvePath(uPath);
     }
 
@@ -136,8 +185,6 @@ class WiiURootsLibrary extends AssetLibrary
             default: null;
         }
     }
-
-    ///////////////////////////////////////////
 
     @:noCompletion private function resolvePath(uPath:String, ?keepRoot:Bool = true):String
     {
@@ -183,10 +230,13 @@ class WiiURootsLibrary extends AssetLibrary
                 currentPath = Path.join([currentPath, nextSegment]);
             }
 
-            if (matchFound && FileSystem.exists(currentPath))
+            if (matchFound && FileSystem.exists(currentPath)) {
+                // trace("Resolved " + uPath + " to " + currentPath);
                 return keepRoot ? currentPath : Path.join(route);
+            }
         }
 
+        // trace("Asset directly not found: " + uPath);
         return null;
     }
 

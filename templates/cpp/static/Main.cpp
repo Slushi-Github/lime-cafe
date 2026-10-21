@@ -10,19 +10,152 @@
 #include <whb/crash.h>
 #include <unistd.h>
 #include <coreinit/debug.h>
+#include <coreinit/launch.h>
+#include <coreinit/exception.h>
+#include <coreinit/context.h>
 #include <coreinit/memheap.h>
 #include <coreinit/memexpheap.h>
 #include <coreinit/memdefaultheap.h>
+#include <coreinit/memory.h>
 #include <coreinit/thread.h>
 #include <coreinit/time.h>
 #include <nn/erreula.h>
 #include <vpad/input.h>
+#include <coreinit/core.h>
+#include <coreinit/memorymap.h>
 
 using namespace nn::erreula;
 
-static uint32_t probeLargestFree()
+void logMsg(const char *msg)
 {
-	uint32_t lo = 0, hi = 256u * 1024 * 1024; // 256 MB
+	OSReport("%s\n", msg);
+	WHBLogPrintf("%s\n", msg);
+}
+
+static BOOL onSystemCrash(OSContext *context)
+{
+	uint32_t coreId = OSGetCoreId();
+	OSThread *currentThread = OSGetCurrentThread();
+	const char *threadName = currentThread ? OSGetThreadName(currentThread) : "Unknown";
+	uint32_t threadId = currentThread ? currentThread->id : 0;
+
+	char crashSymbol[128] = "Unknown Symbol";
+	char callerSymbol[128] = "Unknown Symbol";
+
+	if (context->srr0 != 0)
+	{
+		OSGetSymbolName((uint32_t)context->srr0, crashSymbol, sizeof(crashSymbol));
+	}
+	if (context->lr != 0)
+	{
+		OSGetSymbolName((uint32_t)context->lr, callerSymbol, sizeof(callerSymbol));
+	}
+
+	char backtraceStr[512] = "";
+	uint32_t *frame = (uint32_t *)context->gpr[1];
+	int depth = 0;
+
+	while (frame != nullptr && OSIsAddressValid((uint32_t)frame) && depth < 5)
+	{
+		uint32_t savedLr = frame[1];
+		if (savedLr != 0 && OSIsAddressValid(savedLr))
+		{
+			char fnName[128] = "";
+			OSGetSymbolName(savedLr, fnName, sizeof(fnName));
+
+			char line[160];
+			snprintf(line, sizeof(line), "  #%d [0x%08X] %s\n", depth, savedLr, fnName[0] ? fnName : "???");
+			strncat(backtraceStr, line, sizeof(backtraceStr) - strlen(backtraceStr) - 1);
+			depth++;
+		}
+		frame = (uint32_t *)frame[0];
+	}
+
+	char crashLog[1536];
+	snprintf(crashLog, sizeof(crashLog),
+		"=== Wii U Crash Handler ===\nCRASH ON THREAD: [%s] (ID: %u, Core: %u)\n\n"
+		"Crash caused by:\n"
+		"  %s\n"
+		"  PC: 0x%08X | Memory (DAR): 0x%08X\n\n"
+		"Called from:\n"
+		"  %s (LR: 0x%08X)\n\n"
+		"Stack Trace:\n%s"
+		"===============================================",
+		threadName ? threadName : "unnamed",
+		threadId,
+		coreId,
+		crashSymbol,
+		(uint32_t)context->srr0,
+		(uint32_t)context->dar,
+		callerSymbol,
+		(uint32_t)context->lr,
+		backtraceStr[0] ? backtraceStr : "  (No available)\n");
+
+	logMsg(crashLog);
+
+	WHBUnmountSdCard();
+	WHBLogUdpDeinit();
+
+	OSFatal(crashLog);
+
+	return TRUE;
+}
+
+static MEMHeapHandle getActualDefaultHeap()
+{
+	MEMHeapHandle heap = MEMGetBaseHeapHandle(MEM_BASE_HEAP_MEM2);
+	if (heap) return heap;
+
+	heap = MEMGetBaseHeapHandle(MEM_BASE_HEAP_FG);
+	if (heap) return heap;
+
+	void *sample = MEMAllocFromDefaultHeapEx(16, 4);
+	if (sample)
+	{
+		heap = (MEMHeapHandle)MEMFindContainHeap(sample);
+		MEMFreeToDefaultHeap(sample);
+		return heap;
+	}
+
+	return NULL;
+}
+
+static uint32_t probeLargestFree(uint32_t *outTotalFree = NULL)
+{
+	MEMHeapHandle heap = getActualDefaultHeap();
+	uint32_t nativeAllocatable = 0;
+
+	if (heap)
+	{
+		if (outTotalFree)
+		{
+			*outTotalFree = MEMGetTotalFreeSizeForExpHeap(heap);
+		}
+		nativeAllocatable = MEMGetAllocatableSizeForExpHeapEx(heap, 4);
+	}
+
+	if (nativeAllocatable > 0)
+	{
+		void *p = MEMAllocFromDefaultHeapEx(nativeAllocatable, 4);
+		if (p)
+		{
+			MEMFreeToDefaultHeap(p);
+			return nativeAllocatable;
+		}
+	}
+
+	uint32_t hi = nativeAllocatable;
+	if (hi == 0)
+	{
+		uint32_t mem2Addr = 0, mem2Size = 0;
+		if (OSGetMemBound(OS_MEM2, &mem2Addr, &mem2Size) != 0 || mem2Size == 0)
+		{
+			mem2Size = 1024u * 1024 * 1024; // 1 GB fallback
+		}
+		hi = mem2Size;
+	}
+
+	uint32_t lo = 0;
 	while (hi - lo > 64 * 1024)
 	{
 		uint32_t mid = lo + (hi - lo) / 2;
@@ -42,9 +175,22 @@ static uint32_t probeLargestFree()
 
 static void logMem(const char *tag)
 {
-	uint32_t largest = probeLargestFree();
-	OSReport("[MEM] %s: largest_alloc=%u KB\n", tag, largest / 1024);
-	WHBLogPrintf("[MEM] %s: largest_alloc=%u KB", tag, largest / 1024);
+	uint32_t totalFree = 0;
+	uint32_t largest = probeLargestFree(&totalFree);
+	char msg[160];
+
+	if (totalFree > 0)
+	{
+		snprintf(msg, sizeof(msg), "[MEM] %s: largest_alloc=%u KB | total_free=%u KB",
+		         tag, largest / 1024, totalFree / 1024);
+	}
+	else
+	{
+		snprintf(msg, sizeof(msg), "[MEM] %s: largest_alloc=%u KB",
+		         tag, largest / 1024);
+	}
+
+	logMsg(msg);
 }
 
 static OSThread sMemThread;
@@ -88,8 +234,14 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
 	WHBLogUdpInit();
 	WHBMountSdCard();
 	WHBGfxInit();
-	OSReport("[Main.cpp] Running on WiiU! Initializing rest of HXCPP and Lime...\n");
-	WHBLogPrintf("[Main.cpp] Running on WiiU! Initializing rest of HXCPP and Lime...\n");
+
+	OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_DSI, onSystemCrash);
+	OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_ISI, onSystemCrash);
+	OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_PROGRAM, onSystemCrash);
+	OSSetExceptionCallbackEx(OS_EXCEPTION_MODE_GLOBAL_ALL_CORES, OS_EXCEPTION_TYPE_ALIGNMENT, onSystemCrash);
+	logMsg("[Main.cpp] Wii U native crash Handler prepared");
+
+	logMsg("[Main.cpp] Running on WiiU! Initializing rest of HXCPP and Lime...");
 
 	logMem("before hxRunLibrary");
 
@@ -119,15 +271,14 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
 		printf("%s", log_message);
 
 #if defined(__WIIU__)
-		OSReport("%s", log_message);
-		WHBLogPrintf("%s", log_message);
+		logMsg(log_message);
 
 		OSSuspendThread(&sMemThread);
 
 		char display_message[4096];
 		snprintf(display_message, sizeof(display_message),
 			"%s\n\n"
-			"(press exit or press A on the Wii U Gamepad to return to Wii U Menu)",
+			"(Press \"Reboot\" button or press A on the Wii U Gamepad to restart console)",
 			err);
 
 		char16_t u16_error[4096];
@@ -161,9 +312,9 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
 				appearArg.errorArg.errorType      = ErrorType::Message1Button;
 				appearArg.errorArg.renderTarget   = RenderTarget::Both;
 				appearArg.errorArg.controllerType = ControllerType::DrcGamepad;
-				appearArg.errorArg.errorTitle     = u" Haxe Error";
+				appearArg.errorArg.errorTitle     = u"HaxeError!";
 				appearArg.errorArg.errorMessage   = u16_error;
-				appearArg.errorArg.button1Label   = u"Exit";
+				appearArg.errorArg.button1Label   = u"Reboot console";
 
 				AppearErrorViewer(appearArg);
 
@@ -188,15 +339,7 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
 
 					if (IsDecideSelectButtonError())
 					{
-						dialogActive = false;
-					}
-
-					if (vpadErr == VPAD_READ_SUCCESS && frameCounter > 20)
-					{
-						if ((vpad.trigger & (VPAD_BUTTON_A)))
-						{
-							dialogActive = false;
-						}
+						OSLaunchTitlel(OS_TITLE_ID_REBOOT, 0);
 					}
 
 					frameCounter++;

@@ -333,6 +333,15 @@ class Font
 		return renderGlyphWithLoadFlags(glyph, fontSize, dpi);
 	}
 
+	@:noCompletion private static inline function __readInt32(bytes:Bytes, pos:Int):Int
+	{
+		#if wiiu
+		return untyped __cpp__("(int)__builtin_bswap32((unsigned int){0})", bytes.getInt32(pos));
+		#else
+		return bytes.getInt32(pos);
+		#end
+	}
+
 	/**
 	 * Renders a specific glyph to an image using explicit FreeType load flags.
 	 *
@@ -359,19 +368,19 @@ class Font
 			var dataPosition = 0;
 
 			// Extract glyph information from the byte array
-			var index:Int = bytes.getInt32(dataPosition);
+			var index:Int = __readInt32(bytes, dataPosition);
 			dataPosition += 4;
 
-			var width:Int = bytes.getInt32(dataPosition);
+			var width:Int = __readInt32(bytes, dataPosition);
 			dataPosition += 4;
 
-			var height:Int = bytes.getInt32(dataPosition);
+			var height:Int = __readInt32(bytes, dataPosition);
 			dataPosition += 4;
 
-			var x:Int = bytes.getInt32(dataPosition);
+			var x:Int = __readInt32(bytes, dataPosition);
 			dataPosition += 4;
 
-			var y:Int = bytes.getInt32(dataPosition);
+			var y:Int = __readInt32(bytes, dataPosition);
 			dataPosition += 4;
 
 			// Check if width and height are valid before proceeding
@@ -380,6 +389,7 @@ class Font
 				return null;
 			}
 
+			#if !wiiu
 			// Extract pixel data from the byte array, accounting for 32-bit RGBA data
 			var pitch = width * 4; // 32-bit color data
 
@@ -399,6 +409,42 @@ class Font
 			image.y = y;
 
 			return image;
+			#else
+			var pixels = width * height;
+			var remaining = bytes.length - dataPosition;
+
+			if (remaining >= pixels * 4)
+			{
+				var pitch = width * 4;
+				var dataBytes = Bytes.alloc(pixels * 4);
+
+				for (i in 0...height)
+				{
+					dataBytes.blit(i * width * 4, bytes, dataPosition + (i * pitch), width * 4);
+				}
+
+				var buffer = new ImageBuffer(new UInt8Array(dataBytes), width, height, 32);
+				var image = new Image(buffer, 0, 0, width, height);
+				image.x = x;
+				image.y = y;
+
+				return image;
+			}
+			else if (remaining >= pixels)
+			{
+				var dataBytes = Bytes.alloc(pixels);
+				dataBytes.blit(0, bytes, dataPosition, pixels);
+
+				var buffer = new ImageBuffer(new UInt8Array(dataBytes), width, height, 8);
+				var image = new Image(buffer, 0, 0, width, height);
+				image.x = x;
+				image.y = y;
+
+				return image;
+			}
+
+			return null;
+			#end
 		}
 		#end
 
