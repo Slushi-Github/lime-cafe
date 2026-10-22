@@ -271,41 +271,14 @@ class NativeWindow
 
 	public function getDisplay():Display
 	{
-		#if wiiu 
-		trace("Call getDisplay");
-		#end
-
 		if (handle != null)
 		{
 			#if (!macro && lime_cffi)
-			#if wiiu 
-			trace("Before call lime_window_get_display");
-			#end
 			var index = NativeCFFI.lime_window_get_display(handle);
-			#if wiiu 
-			trace("After call lime_window_get_display: index: " + index + " handle: " + handle);
-			#end
 
 			if (index > -1)
 			{
-				#if wiiu
-				trace("index: " + index);
-				#end
-				final result = System.getDisplay(index);
-				#if wiiu 
-				final text:String = (if (result == null) "null" else "not null");
-				trace("result: " + text);
-				if (result != null) {
-					final boundsStr:String = (if (result.bounds != null) Std.string(result.bounds.x) + ", " + Std.string(result.bounds.y) + ", " + Std.string(result.bounds.width) + ", " + Std.string(result.bounds.height) else "is null");
-					final modeStr:String = Std.string(result.currentMode);
-					final text2:String = (if (result.supportedModes != null) Std.string(result.supportedModes.length) else "is null");
-
-					trace("bounds: " + boundsStr);
-					trace("currentMode: " + modeStr);
-					trace("supportedModes: " + text2);
-				}
-				#end
-				return result;
+				return System.getDisplay(index);
 			}
 			#end
 		}

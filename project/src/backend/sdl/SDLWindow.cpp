@@ -236,11 +236,6 @@ namespace lime {
 
 
 	SDLWindow::SDLWindow (Application* application, int width, int height, int flags, const char* title) {
-
-		#if defined(HX_CAFE)
-		OSReport("[backend/sdl/SDLWindow.cpp::SDLWindow] About to create SDLWindow: %s\n", title);
-		WHBLogPrintf("[backend/sdl/SDLWindow.cpp::SDLWindow] About to create SDLWindow: %s\n", title);
-		#endif
 		activeSwapInterval = 0;
 		requestedVSyncMode = (flags & WINDOW_FLAG_VSYNC) ? 1 : 0;
 		sdlTexture = 0;
@@ -550,19 +545,9 @@ namespace lime {
 
 		if (context || sdlRenderer || useVulkan) {
 
-			#if defined(HX_CAFE)
-			OSReport("[backend/sdl/SDLWindow.cpp] Registering window with SDLApplication\n");
-			WHBLogPrintf("[backend/sdl/SDLWindow.cpp] Registering window with SDLApplication\n");
-			#endif
 			((SDLApplication*)currentApplication)->RegisterWindow (this);
-			#if defined(HX_CAFE)
-			OSReport("[backend/sdl/SDLWindow.cpp] Finished Registering window with SDLApplication\n");
-			WHBLogPrintf("[backend/sdl/SDLWindow.cpp] Finished Registering window with SDLApplication\n");
-			#endif
-
 
 		} else {
-
 			printf ("Could not create SDL renderer: %s.\n", SDL_GetError ());
 			#if defined(HX_CAFE)
 			OSReport("[backend/sdl/SDLWindow.cpp] Could not create SDL renderer: %s.\n", SDL_GetError());
@@ -589,8 +574,6 @@ namespace lime {
 		} else if (context) {
 
 			#if defined(HX_CAFE)
-			OSReport("[backend/sdl/SDLWindow.cpp::~SDLWindow] About to GX2GL_DeleteContext\n");
-			WHBLogPrintf("[backend/sdl/SDLWindow.cpp::~SDLWindow] About to GX2GL_DeleteContext\n");
 			GX2GL_MakeCurrent(NULL);
 			GX2GL_DeleteContext((GX2GL_Context)context);
 			OSReport("[backend/sdl/SDLWindow.cpp::~SDLWindow] Finished GX2GL_DeleteContext\n");
@@ -675,8 +658,6 @@ namespace lime {
 			} else if (context) {
 
 				#if defined(HX_CAFE)
-				OSReport("[backend/sdl/SDLWindow.cpp::Close] About to GX2GL_DeleteContext\n");
-				WHBLogPrintf("[backend/sdl/SDLWindow.cpp::Close] About to GX2GL_DeleteContext\n");
 				GX2GL_MakeCurrent(NULL);
 				GX2GL_DeleteContext((GX2GL_Context)context);
 				OSReport("[backend/sdl/SDLWindow.cpp::Close] Finished GX2GL_DeleteContext\n");
@@ -761,8 +742,6 @@ namespace lime {
 
 
 		#if defined(HX_CAFE)
-		OSReport("[backend/sdl/SDLWindow.cpp] About to get refresh rate\n");
-		WHBLogPrintf("[backend/sdl/SDLWindow.cpp] About to get refresh rate\n");
 		return 60.0; // Always is 60 FPS on Wii U
 		#endif
 
@@ -952,11 +931,7 @@ namespace lime {
 
 		if (sdlWindow && context) {
 			#if defined(HX_CAFE)
-			// OSReport("[backend/sdl/SDLWindow.cpp::ContextMakeCurrent] About to GX2GL_MakeCurrent\n");
-			// WHBLogPrintf("[backend/sdl/SDLWindow.cpp::ContextMakeCurrent] About to GX2GL_MakeCurrent\n");
 			GX2GL_MakeCurrent((GX2GL_Context)context);
-			// OSReport("[backend/sdl/SDLWindow.cpp::ContextMakeCurrent] GX2GL_MakeCurrent done\n");
-			// WHBLogPrintf("[backend/sdl/SDLWindow.cpp::ContextMakeCurrent] GX2GL_MakeCurrent done\n");
 			#else
 			SDL_GL_MakeCurrent (sdlWindow, context);
 			#endif
@@ -1002,8 +977,6 @@ namespace lime {
 	const char* SDLWindow::GetContextType () {
 
 		#if defined(HX_CAFE)
-		OSReport("[backend/sdl/SDLWindow.cpp::GetContextType] Returning \"opengl\"\n");
-		WHBLogPrintf("[backend/sdl/SDLWindow.cpp::GetContextType] Returning \"opengl\"\n");
 		return "opengl";
 		#endif
 
@@ -1674,8 +1647,6 @@ namespace lime {
 		}
 
 		#if defined(HX_CAFE)
-		OSReport("[backend/sdl/SDLWindow.cpp::SetVSyncMode] %d\n", vsyncMode);
-		WHBLogPrintf("[backend/sdl/SDLWindow.cpp::SetVSyncMode] %d\n", vsyncMode);
 		switch (vsyncMode)
 		{
 		case 1:
@@ -1743,8 +1714,6 @@ namespace lime {
 		if (activeSwapInterval == 0) {
 
 			#if defined(HX_CAFE)
-			OSReport("[backend/sdl/SDLWindow.cpp::SetVSyncMode] Setting swap interval to 0\n");
-			WHBLogPrintf("[backend/sdl/SDLWindow.cpp::SetVSyncMode] Setting swap interval to 0\n");
 			GX2GL_SetSwapInterval(0);
 			OSReport("[backend/sdl/SDLWindow.cpp::SetVSyncMode] GX2GL_SetSwapInterval(0) done\n");
 			WHBLogPrintf("[backend/sdl/SDLWindow.cpp::SetVSyncMode] GX2GL_SetSwapInterval(0) done\n");

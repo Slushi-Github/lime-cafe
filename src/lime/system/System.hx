@@ -241,21 +241,18 @@ class System
 	{
     #if (lime_cffi && !macro)
 
-    #if wiiu
-   	trace("Call getDisplay with id: " + id);
-    #end
-
+	// On Wii U for some reason, we have to fake a display, so that the program can run
 	#if wiiu
-	trace("Using dummy display for Wii U: 1920x1080@60 ARGB32");
+	trace("Using dummy display for Wii U: 1280x720@60 ARGB32");
 	var display = new Display();
 	display.id = id;
 	display.name = "Wii U Display";
-	display.bounds = new Rectangle(0, 0, 1920, 1080);
-	display.safeArea = new Rectangle(0, 0, 1920, 1080);
+	display.bounds = new Rectangle(0, 0, 1280, 720);
+	display.safeArea = new Rectangle(0, 0, 1280, 720);
 	display.dpi = 72.0;
 	display.orientation = LANDSCAPE;
 
-	var mode = new DisplayMode(1920, 1080, 60, ARGB32);
+	var mode = new DisplayMode(1280, 720, 60, ARGB32);
 	display.supportedModes = [mode];
 	display.currentMode = mode;
 
