@@ -26,11 +26,33 @@ class WiiURootsLibrary extends AssetLibrary
 {
     public final roots:Array<String>;
 
+    var caches(get, never):Array<Map<String, Dynamic>>;
+    function get_caches():Array<Map<String, Dynamic>>
+        return [cachedAudioBuffers, cachedBytes, cachedFonts, cachedImages, cachedText];
+
     public function new(roots:Array<String>)
     {
         this.roots = roots.filter(r -> r != null);
         super();
 
+        // Copiar cachés y tipos desde la librería por defecto si existe (proxy)
+        try
+        {
+            final proxy = Assets.getLibrary('default');
+            if (proxy != null)
+            {
+                classTypes = proxy.classTypes.copy();
+
+                cachedAudioBuffers = proxy.cachedAudioBuffers.copy();
+                cachedBytes = proxy.cachedBytes.copy();
+                cachedFonts = proxy.cachedFonts.copy();
+                cachedImages = proxy.cachedImages.copy();
+                cachedText = proxy.cachedText.copy();
+            }
+        }
+        catch (e:Dynamic) {}
+
+        // Lógica específica del manifiesto de la Wii U
         final manifestPath:String = 'fs:/vol/content/manifest/default.json';
         if (FileSystem.exists(manifestPath))
         {
@@ -52,12 +74,12 @@ class WiiURootsLibrary extends AssetLibrary
         }
 
         this.loaded = true;
-        trace("Custom Wii U asset library loaded!");
+        trace("Custom Wii U roots asset library loaded!");
     }
 
     override public function load():Future<AssetLibrary>
     {
-        return Future.withValue(cast (this, AssetLibrary));
+        return Future.withValue(cast this);
     }
 
     override public function loadImage(id:String):Future<Image>
@@ -87,91 +109,142 @@ class WiiURootsLibrary extends AssetLibrary
 
     override public function exists(id:String, type:String):Bool
     {
-        if (getPath(id) != null)
-        {
-            if (type == null || cast(type, AssetType) == BINARY) return true;
-
-            if (types.exists(id))
-            {
-                var requestedType:AssetType = cast type;
-                var actualType:AssetType = types.get(id);
-
-                if (actualType == requestedType) return true;
-                if ((requestedType == SOUND || requestedType == MUSIC) && 
-                    (actualType == SOUND || actualType == MUSIC))
-                {
-                    return true;
-                }
-                // trace("Asset type mismatch: " + id);
-                return false;
-            }
-
-            return true;
-        }
-
-        // trace("Asset not found: " + id);
-        return false;
+        return getPath(id) != null || getEmbedPath(id) != null || getCachedPath(id) != null;
     }
 
     override public function getPath(uPath:String):String
     {
         if (paths.exists(uPath))
         {
-            trace("Mapping " + uPath + " to " + paths.get(uPath));
-            uPath = paths.get(uPath);
+            var mapped = paths.get(uPath);
+            if (FileSystem.exists(mapped))
+                return mapped;
         }
 
         if (uPath.startsWith("fs:/"))
         {
             if (FileSystem.exists(uPath))
-            {
-                // trace("Found direct path: " + uPath);
                 return uPath;
-            }
         }
 
         for (root in roots)
         {
-            // trace("Trying root: " + root);
-            final path:String = Path.join([root, uPath]);
+            final path = Path.join([root, uPath]);
 
-            if (FileSystem.exists(path)) {
-                // trace("Found path: " + path);
+            if (FileSystem.exists(path))
                 return path;
+        }
+
+        // Búsqueda insensible a mayúsculas/minúsculas y rutas relativas con resolvePath
+        return resolvePath(uPath);
+    }
+
+    public function getEmbedPath(uPath:String):String
+    {
+        for (root in roots)
+        {
+            final path = Path.join([root, uPath]);
+
+            if (classTypes.exists(path))
+                return path;
+        }
+
+        return classTypes.exists(uPath) ? uPath : null;
+    }
+
+    public function getCachedPath(uPath:String, ?map:Map<String, Dynamic>):WiiUAssetsLibraryCache
+    {
+        for (root in roots)
+        {
+            final path = Path.join([root, uPath]);
+
+            if (map == null)
+            {
+                for (cache in caches)
+                {
+                    if (cache.exists(path))
+                        return { cache: cache, path: path };
+                }
+            } 
+            else if (map.exists(path))
+            {
+                return { cache: map, path: path };
             }
         }
 
-        // trace("Asset not found: " + uPath + " in roots: " + roots + ", trying to resolve it...");
-        return resolvePath(uPath);
+        if (map == null)
+        {
+            for (cache in caches)
+            {
+                if (cache.exists(uPath))
+                    return { cache: cache, path: uPath };
+            }
+        }
+        else if (map.exists(uPath))
+        {
+            return { cache: map, path: uPath };
+        }
+
+        return null;
+    }
+
+    public function getEmbed(id:String):Dynamic
+    {
+        final path:String = getEmbedPath(id);
+        return path == null ? null : Type.createInstance(classTypes[path], []);
+    }
+
+    public function getCached(id:String, ?map:Map<String, Dynamic>):Dynamic
+    {
+        final path = getCachedPath(id, map);
+        return path == null ? null : path.cache[path.path];
     }
 
     override public function getBytes(id:String):Bytes
     {
-        final path:String = getPath(id);
-        return path == null ? null : File.getBytes(path);
+        final path = getPath(id);
+
+        if (path != null && FileSystem.exists(path))
+            return File.getBytes(path);
+        
+        return getEmbed(id) ?? getCached(id, cachedBytes);
     }
 
     override public function getText(id:String):String
     {
-        final path:String = getPath(id);
-        return path == null ? null : File.getContent(path);
-    }
+        final path = getPath(id);
 
-    @:dox(hide)
-    public function resolve<T>(id:String, method:Bytes -> T):T
-    {
-        final bytes:Bytes = getBytes(id);
-        return bytes == null ? null : method(bytes);
+        if (path != null && FileSystem.exists(path))
+            return File.getContent(path);
+
+        return getEmbed(id) ?? getCached(id, cachedText);
     }
 
     override public function getAudioBuffer(id:String):AudioBuffer
-        return resolve(id, AudioBuffer.fromBytes);
+    {
+        final bytes = getBytes(id);
+        return bytes == null ? getCached(id, cachedAudioBuffers) : AudioBuffer.fromBytes(bytes);
+    }
 
     override public function getImage(id:String):Image
-        return resolve(id, Image.fromBytes);
+    {
+        final path = getPath(id);
+
+        if (path != null && FileSystem.exists(path))
+            return Image.fromBytes(File.getBytes(path));
+
+        return getEmbed(id) ?? getCached(id, cachedImages);
+    }
 
     override public function getFont(id:String):Font
-        return resolve(id, Font.fromBytes);
+    {
+        final path = getPath(id);
+
+        if (path != null && FileSystem.exists(path))
+            return Font.fromBytes(File.getBytes(path));
+
+        return getEmbed(id) ?? getCached(id, cachedFonts);
+    }
 
     override public function getAsset(id:String, type:String):Dynamic
     {
@@ -230,16 +303,18 @@ class WiiURootsLibrary extends AssetLibrary
                 currentPath = Path.join([currentPath, nextSegment]);
             }
 
-            if (matchFound && FileSystem.exists(currentPath)) {
-                // trace("Resolved " + uPath + " to " + currentPath);
+            if (matchFound && FileSystem.exists(currentPath))
                 return keepRoot ? currentPath : Path.join(route);
-            }
         }
 
-        // trace("Asset directly not found: " + uPath);
         return null;
     }
 
     @:noCompletion private function formatString(str:String):String
         return str.trim().toLowerCase().replace(' ', '-');
+}
+
+typedef WiiUAssetsLibraryCache = {
+    cache: Map<String, Dynamic>,
+    path: String
 }

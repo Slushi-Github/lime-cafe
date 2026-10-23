@@ -1,5 +1,8 @@
 #include "SDLGamepad.h"
 
+#if defined(__WIIU__) || defined(HX_CAFE)
+#include "../wiiu/input/WiiUInput.h"
+#endif
 
 namespace lime {
 
@@ -85,6 +88,14 @@ namespace lime {
 
 
 	void Gamepad::Rumble (int id, double lowFrequencyRumble, double highFrequencyRumble, int duration) {
+
+
+		#if defined(__WIIU__) || defined(HX_CAFE)
+        if (id == 0) {
+            WiiUInput::Rumble(lowFrequencyRumble, highFrequencyRumble, duration);
+            return;
+        }
+        #endif
 
 		auto it = gameControllers.find (id);
 		if (it == gameControllers.end ())

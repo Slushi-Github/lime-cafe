@@ -17,6 +17,10 @@
 #include "SDL_sound.h"
 #endif
 
+#if defined(__WIIU__) || defined(HX_CAFE)
+#include "../wiiu/input/WiiUInput.h"
+#endif
+
 namespace lime
 {
 
@@ -773,6 +777,10 @@ namespace lime
 		SDL_AtomicSet(&s_nativeModalLoopDepth, 0);
 #endif
 		CalibrateSleepGuard(true);
+
+#if defined(__WIIU__) || defined(HX_CAFE)
+		lime::WiiUInput::Init();
+#endif
 	}
 
 	void SDLApplication::ProcessClipboardEvent(SDL_Event *event)
@@ -1355,6 +1363,11 @@ namespace lime
 	bool SDLApplication::Update()
 	{
 
+#if defined(__WIIU__) || defined(HX_CAFE)
+		lime::WiiUInput::Update();
+#endif
+
+
 		SDL_Event event;
 		event.type = -1;
 
@@ -1411,7 +1424,6 @@ namespace lime
 
 	void SDLApplication::UpdateFrame()
 	{
-
 #ifdef EMSCRIPTEN
 		System::GCTryExitBlocking();
 #endif
