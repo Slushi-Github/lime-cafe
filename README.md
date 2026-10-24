@@ -5,9 +5,7 @@
 This is a experimental fork to attempt to port Lime to the Wii U, based on [my fork of Lime for the Nintendo Switch.](https://github.com/Slushi-Github/lime-nx)
 
 While I can start to consider it "functional", it's actually extremely unstable and difficult to maintain.
-After many changes and a new version of [gx2gl](https://github.com/ExpansionPak/gx2gl) for this purpose, as well as experimenting with custom rendering methods—as opposed to the default ones in pure Lime (as in the Lime samples) or in OpenFL, I've managed to start rendering simple things through this whole experiment.
-
-There’s still a major problem, though: there’s a significant memory leak somewhere in Lime or simply in HXCPP, and with OpenFL, it runs much faster—especially if there’s a [`openfl.text.TextField`](https://api.openfl.org/openfl/text/TextField.html), resulting in an "Abort called." within a matter of minutes or seconds, depending on the case.
+After many changes and a new version of [gx2gl](https://github.com/ExpansionPak/gx2gl) for this purpose, as well as experimenting with custom rendering methods, as opposed to the default ones in pure Lime (as in the Lime samples) or in OpenFL, I've managed to start rendering simple things through this whole experiment.
 
 I don’t really consider this usable yet, and I don’t recommend trying it unless it’s for experimental purposes or to help with the project itself.
 
