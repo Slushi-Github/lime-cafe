@@ -360,7 +360,11 @@
 			<file name="src/backend/sdl/SDLMutex.cpp" />
 			<file name="src/backend/sdl/SDLSystem.cpp" />
 			<file name="src/backend/sdl/SDLWindow.cpp" />
-			<file name="src/backend/wiiu/input/WiiUInput.cpp" if="wiiu || cafe || HX_CAFE" />
+
+			<file name="src/backend/wiiu/input/WiiUInput.cpp" />
+			<file name="src/backend/wiiu/input/WiiUGamepad.cpp" />
+			<file name="src/backend/wiiu/input/WiiUJoystick.cpp" />
+			<file name="src/backend/wiiu/input/WiiUTouch.cpp" />
 		</section>
 
 		<section if="LIME_TINYFILEDIALOGS">

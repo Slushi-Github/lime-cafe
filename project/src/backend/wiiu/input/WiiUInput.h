@@ -10,12 +10,9 @@ namespace lime {
         static void Init();
         static void Update();
         static void Rumble(double lowFrequency, double highFrequency, int durationMs);
-
-    private:
-        static bool touchWasDown;
     };
 
-}
+} // namespace lime
 
-#endif // __WIIU__ || HX_CAFE
+#endif // __WIIU__ || defined(HX_CAFE)
 #endif // LIME_WIIU_INPUT_H
