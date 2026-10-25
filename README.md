@@ -9,7 +9,23 @@ After many changes and a new version of [gx2gl](https://github.com/ExpansionPak/
 
 I don’t really consider this usable yet, and I don’t recommend trying it unless it’s for experimental purposes or to help with the project itself.
 
-**A huge thanks** to [ExpansionPak](https://github.com/ExpansionPak) for creating [gx2gl](https://github.com/ExpansionPak/gx2gl), it’s literally the foundation of this entire project, allowing us to make the most of the existing OpenGL support in Lime, OpenFL, and, I hope, HaxeFlixel in the future, all while using the Wii U’s GX2 graphics API, without having to build an entire graphics backend from scratch. Without [gx2gl](https://github.com/ExpansionPak/gx2gl), this project wouldn’t be possible (and the same goes for the one that’s been on my mind for years, unlike [the one I managed to pull off with the Switch](https://github.com/Slushi-Github/lime-nx)).
+**A huge thanks** to [ExpansionPak](https://github.com/ExpansionPak) for creating [gx2gl](https://github.com/ExpansionPak/gx2gl), it’s literally the foundation of this entire project, allowing us to make the most of the existing OpenGL support in Lime, OpenFL, and HaxeFlixel, all while using the Wii U’s GX2 graphics API, without having to build an entire graphics backend from scratch. Without [gx2gl](https://github.com/ExpansionPak/gx2gl), this project wouldn’t be possible (and the same goes for the one that’s been on my mind for years, unlike [the one I managed to pull off with the Switch](https://github.com/Slushi-Github/lime-nx)).
+
+# Examples
+
+### OpenFL samples - [BunnyMark](https://github.com/openfl/openfl-samples/tree/master/demos/BunnyMark)
+
+![](./WiiUExamples/OpenFLBunnyMarkSample.jpg)
+
+### HaxeFlixel 6.2.0 running [Mode](https://haxeflixel.com/demos/Mode):
+
+![](./WiiUExamples/HaxeFlixelModeExample.jpg)
+
+You can get the Mode in the [releases page](https://github.com/Slushi-Github/lime-cafe/releases) or see the Youtube video.
+
+### HaxeFlixel 6.2.0 running [FlxEffectSprite](https://haxeflixel.com/demos/FlxEffectSprite):
+
+![](./WiiUExamples/HaxeFlixelFlxEffectSpriteExample.jpg)
 
 ## How to use
 
