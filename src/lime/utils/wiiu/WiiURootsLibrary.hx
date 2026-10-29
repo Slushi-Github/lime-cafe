@@ -131,9 +131,6 @@ class WiiURootsLibrary extends AssetLibrary
         for (root in roots)
         {
             final path = Path.join([root, uPath]);
-
-            trace("Probando ruta: " + path + " -> Existe: " + FileSystem.exists(path));
-
             if (FileSystem.exists(path))
                 return path;
         }
