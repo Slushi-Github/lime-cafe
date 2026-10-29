@@ -1,8 +1,9 @@
-package lime.utils;
+package lime.utils.wiiu;
 
 import lime.utils.AssetManifest;
 import lime.utils.AssetLibrary;
 import lime.utils.AssetType;
+import lime.utils.wiiu.WiiUMacros;
 
 import lime.media.AudioBuffer;
 import lime.graphics.Image;
@@ -35,7 +36,6 @@ class WiiURootsLibrary extends AssetLibrary
         this.roots = roots.filter(r -> r != null);
         super();
 
-        // Copiar cachés y tipos desde la librería por defecto si existe (proxy)
         try
         {
             final proxy = Assets.getLibrary('default');
@@ -52,11 +52,12 @@ class WiiURootsLibrary extends AssetLibrary
         }
         catch (e:Dynamic) {}
 
-        // Lógica específica del manifiesto de la Wii U
-        final manifestPath:String = 'fs:/vol/content/manifest/default.json';
+        final baseRoot:String = WiiUMacros.getCustomRoot();
+        final manifestPath:String = baseRoot + "manifest/default.json";
+        
         if (FileSystem.exists(manifestPath))
         {
-            final manifest = AssetManifest.fromFile(manifestPath, 'fs:/vol/content/');
+            final manifest = AssetManifest.fromFile(manifestPath, baseRoot);
             if (manifest != null)
             {
                 __fromManifest(manifest);
@@ -64,9 +65,9 @@ class WiiURootsLibrary extends AssetLibrary
                 for (key in paths.keys())
                 {
                     var p = paths.get(key);
-                    if (p != null && p.startsWith("fs:/vol/") && !p.startsWith("fs:/vol/content/"))
+                    if (p != null && p.startsWith("fs:/vol/") && !p.startsWith(baseRoot))
                     {
-                        var corrected = p.replace("fs:/vol/", "fs:/vol/content/");
+                        var corrected = p.replace("fs:/vol/content/", baseRoot);
                         paths.set(key, corrected);
                     }
                 }
@@ -74,7 +75,7 @@ class WiiURootsLibrary extends AssetLibrary
         }
 
         this.loaded = true;
-        trace("Custom Wii U roots asset library loaded!");
+        trace("Custom Wii U roots asset library loaded with root: " + baseRoot);
     }
 
     override public function load():Future<AssetLibrary>
@@ -131,11 +132,12 @@ class WiiURootsLibrary extends AssetLibrary
         {
             final path = Path.join([root, uPath]);
 
+            trace("Probando ruta: " + path + " -> Existe: " + FileSystem.exists(path));
+
             if (FileSystem.exists(path))
                 return path;
         }
 
-        // Búsqueda insensible a mayúsculas/minúsculas y rutas relativas con resolvePath
         return resolvePath(uPath);
     }
 

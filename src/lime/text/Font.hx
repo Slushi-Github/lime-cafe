@@ -335,7 +335,7 @@ class Font
 
 	@:noCompletion private static inline function __readInt32(bytes:Bytes, pos:Int):Int
 	{
-		#if wiiu
+		#if (wiiu && !macro)
 		return untyped __cpp__("(int)__builtin_bswap32((unsigned int){0})", bytes.getInt32(pos));
 		#else
 		return bytes.getInt32(pos);

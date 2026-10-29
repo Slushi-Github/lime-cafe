@@ -229,6 +229,11 @@ class WiiUPlatform extends PlatformTarget
                     additionalLibs.push(lib);
             }
 
+            var customRoot = project.defines.get("WIIU_ROOT_PATH");
+            var useExternalRomfs = (customRoot != null && customRoot != "");
+
+            final romfsPath = useExternalRomfs ? "" : sys.FileSystem.absolutePath(Path.combine(applicationDirectory, "WIIU_ASSETS/romfs"));
+
             WiiULinker.finalBuild({
                 switchExportPath: targetDirectory,
                 projectName: project.app.file,
@@ -236,7 +241,7 @@ class WiiUPlatform extends PlatformTarget
                 projectAuthor: project.meta.company,
                 projectVersion: project.meta.version,
                 mainLibPath: staticLib,
-                romfsPath: sys.FileSystem.absolutePath(Path.combine(applicationDirectory, "WIIU_ASSETS/romfs")),
+                romfsPath: romfsPath,
                 outputDir: "bin",
                 limePath: limePath,
                 makeFileTemplate: makefileTemplate,

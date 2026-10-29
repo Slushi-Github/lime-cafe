@@ -70,7 +70,7 @@ import sys.FileSystem;
 		}
 
 		#if wiiu
-		rootPath = "fs:/vol/content/";
+		rootPath = lime.utils.wiiu.WiiUMacros.getCustomRoot();
 		#end
 
 

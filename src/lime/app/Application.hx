@@ -176,7 +176,7 @@ class Application extends Module
 		__preloader.onComplete.add(onPreloadComplete);
 
 		#if wiiu
-		final rootsLibrary = new lime.utils.WiiURootsLibrary(["fs:/vol/content/"]);
+		final rootsLibrary = new lime.utils.wiiu.WiiURootsLibrary([lime.utils.wiiu.WiiUMacros.getCustomRoot()]);
 		lime.utils.Assets.registerLibrary("default", rootsLibrary);
 		#end
 	}
